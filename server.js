@@ -1,23 +1,47 @@
 const WebSocket = require('ws');
 const https = require('https');
 const fs = require('fs');
+const port = 8080;
 
-//const server = new WebSocket.Server({ port: 3000 });
-const server = https.createServer({
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem'),
-});
+var certContent = fs.readFileSync("./cert.pem", "utf8");
+var keysContent = fs.readFileSync("./key.pem", "utf8");
+//console.log("Cert content:", certContent, keysContent);
 
-const wss = new WebSocket.Server({ server });
-
-server.on('connection', (socket) => {
-    console.log('Client is connected');
-
-    socket.on('message', (message) => {
-        console.log(`Received the message: ${message}`);
+const server = https
+    .createServer({
+        key: fs.readFileSync('key.pem'),
+        cert: fs.readFileSync('cert.pem'),
+        passphrase: "Tigri_1806"
+    })
+    .listen(port, () => {
+        console.log(`Secure server listening on port:${port}`);
     });
 
-    socket.on('close', () => {
-        console.log('Client is disconnected');
+const wss = new WebSocket.Server({
+    server,
+    verifyClient: (info, cb) => {
+        console.log('-> info: ' + info);
+        console.log('-> cb: ' + cb);
+        const origin = info.origin;
+        // Validate origin here
+        cb(true);
+    }
+});
+
+wss.on('connection', (ws) => {
+    console.log('New client connected');
+
+    // When the server receives a message from the client
+    ws.on('message', (message) => {
+        console.log('Received:', message);
+
+        // Respond to the client
+        ws.send('Server received: ' + message);
+    });
+
+    // Handle client disconnection
+    ws.on('close', () => {
+        console.log('Client disconnected');
     });
 });
+//console.log('WebSocket server is running on ws://localhost:', port);
